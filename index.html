@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src https://script.google.com https://script.googleusercontent.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="ROVELO Inventory Management System">
+  <title>ROVELO Inventory</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <!-- Tema diterapkan sebelum render pertama (tanpa kedip) -->
+  <script src="js/theme.js"></script>
+  <link rel="preconnect" href="https://script.google.com">
+  <link rel="preconnect" href="https://script.googleusercontent.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Hanken+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..24,400,0..1,0&icon_names=2d,add,add_shopping_cart,apparel,arrow_back,arrow_downward,arrow_upward,assignment,assignment_return,attach_file,autorenew,backup,badge,balance,block,bolt,bookmark,build,calculate,calendar_today,cancel,casino,category,check,check_circle,checklist,checkroom,chevron_left,chevron_right,close,cloud_done,cloud_off,cloud_sync,cloud_upload,colors,content_copy,contrast,csv,dark_mode,dashboard,delete,description,devices,difference,done_all,download,edit,edit_note,error,fact_check,filter_alt_off,flag,folder_open,function,group,groups,help,history,hourglass_top,image,inbox,info,input,inventory,inventory_2,key,keyboard_arrow_down,landscape,leaderboard,light,light_mode,lightbulb,list,list_alt,local_shipping,lock,lock_clock,lock_reset,logout,manage_accounts,manage_history,menu,move_to_inbox,north_east,notification_important,notifications,notifications_off,open_in_new,palette,password,person,person_add,person_off,picture_as_pdf,play_arrow,playlist_add_check,policy,precision_manufacturing,preview,radio,receipt_long,redeem,refresh,remove,resize,restart_alt,save,schedule,script,search,security,send,settings,settings_backup_restore,shield,shield_lock,shield_person,show_chart,smart_toy,south_east,star,start,storefront,style,supervisor_account,swap_vert,sync,sync_alt,table_view,task_alt,timer_off,today,trending_down,trending_up,tune,unfold_more,update,upload,upload_file,verified,verified_user,visibility,visibility_off,warning&display=block" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=3354bdb1">
+</head>
+<body>
+  <!-- Layar awal -->
+  <div id="boot" class="boot" aria-live="polite">
+    <div class="boot-inner">
+      <img id="bootLogo" alt="ROVELO">
+      <div class="bar-loader" role="progressbar" aria-label="Memuat aplikasi"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ LOGIN ═══════════ -->
+  <div id="auth" class="auth" hidden>
+    <section class="auth-brand" aria-hidden="true">
+      <div>
+        <img class="js-logo-light" alt="">
+        <div class="tag">INVENTORY</div>
+      </div>
+      <div class="auth-hero">
+        <h2>Stok rapi, angka pasti, tanpa drama.</h2>
+        <p>Barang masuk, barang keluar dari marketplace, retur, dan stock opname — tercatat dalam satu sumber data yang sama.</p>
+        <div class="auth-channels" id="authChannels"></div>
+      </div>
+      <div class="auth-foot" id="authFoot">ROVELO Inventory Management System</div>
+    </section>
+    <section class="auth-panel">
+      <div class="auth-card">
+        <img class="auth-mobile-logo js-logo-dark" alt="ROVELO">
+        <form id="loginForm" novalidate>
+          <h1>Masuk</h1>
+          <p class="sub">Gunakan akun yang diberikan Owner.</p>
+          <div class="col gap-16">
+            <div class="field">
+              <label for="lgUser">Username</label>
+              <input id="lgUser" class="input" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+            </div>
+            <div class="field">
+              <label for="lgPass">Kata sandi</label>
+              <div class="pw-wrap">
+                <input id="lgPass" type="password" class="input" autocomplete="current-password" required>
+                <button type="button" class="icon-btn pw-toggle" data-act="pw-toggle" data-for="lgPass" aria-label="Tampilkan sandi"><span class="ms">visibility</span></button>
+              </div>
+            </div>
+            <div id="lgErr" class="banner banner-danger" hidden><span class="ms">error</span><p></p></div>
+            <button class="btn btn-primary btn-block" type="submit" id="lgBtn" style="height:44px">Masuk</button>
+            <button type="button" class="link" data-act="show-recover" style="align-self:center;font-weight:500">Lupa sandi Owner? Pakai kode pemulihan</button>
+          </div>
+        </form>
+        <form id="recoverForm" novalidate hidden>
+          <h1>Pemulihan akun</h1>
+          <p class="sub">Khusus Owner. Masukkan salah satu dari 8 kode pemulihan sekali pakai.</p>
+          <div class="col gap-16">
+            <div class="field"><label for="rcUser">Username Owner</label><input id="rcUser" class="input" autocomplete="username" required></div>
+            <div class="field"><label for="rcCode">Kode pemulihan</label><input id="rcCode" class="input mono" placeholder="XXXX-XXXX" autocomplete="one-time-code" required></div>
+            <div class="field"><label for="rcPass">Sandi baru</label><input id="rcPass" type="password" class="input" autocomplete="new-password" required><span class="help">Minimal 8 karakter, berisi huruf dan angka.</span></div>
+            <div id="rcErr" class="banner banner-danger" hidden><span class="ms">error</span><p></p></div>
+            <button class="btn btn-primary btn-block" type="submit" id="rcBtn" style="height:44px">Ganti sandi</button>
+            <button type="button" class="link" data-act="show-login" style="align-self:center;font-weight:500">Kembali ke halaman masuk</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <!-- ═══════════ APLIKASI ═══════════ -->
+  <div id="app" class="app" hidden>
+    <aside id="sidebar" class="sidebar" aria-label="Navigasi utama">
+      <div class="brand">
+        <img id="brandLogo" class="js-logo-light" alt="ROVELO">
+        <div class="brand-sub">INVENTORY</div>
+        <div class="brand-mini" aria-hidden="true">R</div>
+      </div>
+      <nav>
+        <ul class="nav" id="nav">
+          <li><button class="nav-item" data-nav="dashboard"><span class="ms">dashboard</span><span class="lbl">Dashboard</span></button></li>
+          <li><button class="nav-item" data-nav="products"><span class="ms">inventory_2</span><span class="lbl">Products</span></button></li>
+          <li><button class="nav-item" data-nav="stockin"><span class="ms">move_to_inbox</span><span class="lbl">Stock In</span></button></li>
+          <li><button class="nav-item" data-nav="stockout"><span class="ms">local_shipping</span><span class="lbl">Stock Out</span></button></li>
+          <li><button class="nav-item" data-nav="po"><span class="ms">receipt_long</span><span class="lbl">Purchase Orders</span></button></li>
+          <li><button class="nav-item" data-nav="rts"><span class="ms">assignment_return</span><span class="lbl">Returns / RTS</span></button></li>
+          <li class="nav-sep">Kontrol &amp; Audit</li>
+          <li><button class="nav-item" data-nav="opname"><span class="ms">fact_check</span><span class="lbl">Stock Opname</span></button></li>
+          <li><button class="nav-item" data-nav="history"><span class="ms">history</span><span class="lbl">Audit / History</span></button></li>
+          <li><button class="nav-item" data-nav="settings"><span class="ms">settings</span><span class="lbl">General Settings</span></button></li>
+        </ul>
+      </nav>
+      <button class="side-user" data-act="user-menu" aria-label="Menu akun">
+        <span class="avatar" id="sideAvatar">R</span>
+        <span class="who"><b id="sideName">—</b><span id="sideRole">—</span></span>
+        <span class="ms">unfold_more</span>
+      </button>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <button class="icon-btn menu-btn" data-act="toggle-sidebar" aria-label="Buka menu"><span class="ms">menu</span></button>
+        <img class="top-logo js-logo-dark" alt="ROVELO">
+        <div class="greet grow ellipsis" id="greet"></div>
+        <div class="grow show-sm"></div>
+        <span class="sync" id="sync" title="Status sinkronisasi"><span class="dot"></span><span class="txt">Tersinkron</span></span>
+        <span class="date-pill"><span class="ms sm">calendar_today</span><span id="todayPill"></span></span>
+        <button class="icon-btn" data-act="notif" aria-label="Notifikasi"><span class="ms">notifications</span><span class="count" id="notifCount" hidden>0</span></button>
+        <button class="icon-btn" data-act="theme" aria-label="Ganti mode terang/gelap"><span class="ms" id="themeIcon">dark_mode</span></button>
+      </header>
+
+      <main class="content" id="content">
+        <section class="page" id="page-dashboard" data-title="Dashboard"></section>
+        <section class="page" id="page-products" data-title="Products"></section>
+        <section class="page" id="page-stockin" data-title="Stock In"></section>
+        <section class="page" id="page-stockout" data-title="Stock Out"></section>
+        <section class="page" id="page-po" data-title="Purchase Orders"></section>
+        <section class="page" id="page-rts" data-title="Returns / RTS"></section>
+        <section class="page" id="page-opname" data-title="Stock Opname"></section>
+        <section class="page" id="page-history" data-title="Audit / History"></section>
+        <section class="page" id="page-settings" data-title="General Settings"></section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Lapisan global -->
+  <div id="scrim" class="scrim" hidden></div>
+  <aside id="drawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="drTitle" hidden></aside>
+  <div id="modal" class="modal" role="dialog" aria-modal="true" hidden><div class="modal-box" id="modalBox"></div></div>
+  <div id="pop" class="pop" hidden></div>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <!-- Alamat backend (Apps Script) — satu-satunya file yang perlu Anda edit -->
+  <script src="js/config.js"></script>
+  <script src="js/core.js?v=3354bdb1" defer></script>
+  <script src="js/dashboard.js?v=3354bdb1" defer></script>
+  <script src="js/products.js?v=3354bdb1" defer></script>
+  <script src="js/stock.js?v=3354bdb1" defer></script>
+  <script src="js/import.js?v=3354bdb1" defer></script>
+  <script src="js/po-rts.js?v=3354bdb1" defer></script>
+  <script src="js/opname-history.js?v=3354bdb1" defer></script>
+  <script src="js/settings-export.js?v=3354bdb1" defer></script>
+</body>
+</html>
