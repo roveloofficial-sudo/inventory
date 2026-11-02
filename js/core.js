@@ -376,7 +376,7 @@ function scheduleDash() {
   clearTimeout(_dashTimer);
   _dashTimer = setTimeout(async () => { const r = await callApi('app.dashboard'); if (r.success) { S.dashboard = r.data; if (UI.page === 'dashboard') rerender(); } }, 2500);
 }
-async function refresh(silent) {
+async function refresh(silent, quiet) {
   const before = S.tx.length;
   const res = await callApi('app.bootstrap');
   if (!res.success) {
@@ -387,7 +387,7 @@ async function refresh(silent) {
   cacheState(res.data);
   if (!S.loaded) { S.loaded = true; showApp(); }
   else { renderShell(); rerender(); }
-  if (silent && S.tx.length > before) toast((S.tx.length - before) + ' transaksi baru disinkronisasi', 'Data diperbarui dari pengguna lain · baru saja', 'info', 3500);
+  if (silent && !quiet && S.tx.length > before) toast((S.tx.length - before) + ' transaksi baru disinkronisasi', 'Data diperbarui dari pengguna lain · baru saja', 'info', 3500);
   return true;
 }
 const cacheStateSoon = debounce(() => {
@@ -882,6 +882,18 @@ Object.assign(ACT, {
   'show-recover': () => { $('#loginForm').hidden = true; $('#recoverForm').hidden = false; $('#rcUser').value = $('#lgUser').value; $('#rcUser').focus(); },
   'show-login': () => { $('#recoverForm').hidden = true; $('#loginForm').hidden = false; },
   'page': el => { const f = UI.f[el.dataset.key] || (UI.f[el.dataset.key] = {}); f.pg = Number(el.dataset.pg); rerender(); },
+  'refresh-all': async el => {
+    if (el.disabled) return;
+    if (Net.pending > 0) { toast('Tunggu sebentar', 'Masih ada data yang sedang disimpan. Coba refresh setelah selesai.', 'info', 3500); return; }
+    el.disabled = true; el.classList.add('spin');
+    UI.backups = null;
+    const before = S.tx.length;
+    const ok = await refresh(true, true);
+    el.disabled = false; el.classList.remove('spin');
+    const n = S.tx.length - before;
+    if (ok) toast('Data diperbarui', n > 0 ? n + ' transaksi baru dimuat dari server.' : 'Semua data sudah yang terbaru.', 'success', 2500);
+    else toast('Gagal memuat ulang', Net.online ? 'Server belum merespons. Coba lagi sebentar.' : 'Periksa koneksi internet lalu coba lagi.', 'danger', 4500);
+  },
   'reload-app': () => { $('#boot').innerHTML = '<div class="boot-inner"><img id="bootLogo" alt="ROVELO"><div class="bar-loader"></div></div>'; renderLogos(); location.reload(); }
 });
 document.addEventListener('click', e => {
