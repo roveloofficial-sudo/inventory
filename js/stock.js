@@ -8,7 +8,7 @@ function ItemsEditor(root, o) {
   ed.add = init => { ed.rows.push(Object.assign({ key: tmpId('r'), kind: 'variant', id: '', ukuran: '', qty: '' }, init || {})); ed.render(); };
   ed.comps = r => {
     if (!r.id) return [];
-    if (r.kind === 'bundle') return (IX.bItems[r.id] || []).map(i => ({ vid: slug(i.SKU) + '-' + slug(i.Warna) + '-' + slug(r.ukuran), q: i.Jumlah * (int(r.qty) || 0) }));
+    if (r.kind === 'bundle') return (IX.bItems[r.id] || []).map(i => ({ vid: skuKey(i.SKU) + '-' + slug(i.Warna) + '-' + slug(r.ukuran), q: i.Jumlah * (int(r.qty) || 0) }));
     return [{ vid: r.id, q: int(r.qty) || 0 }];
   };
   ed.net = () => { const m = {}; ed.rows.forEach(r => ed.comps(r).forEach(c => { m[c.vid] = (m[c.vid] || 0) + c.q; })); return m; };
@@ -64,7 +64,7 @@ function localRows(kind, p, tag) {
   const base = { GroupID: tag, Tanggal: p.tanggal || now(), Sumber: p.sumber || 'Manual', Status: 'Pending', BundleSKU: '', Paket: 0, Referensi: p.referensi || '', Catatan: p.catatan || '', KunciImport: '', StokSebelum: null, StokSesudah: null, DibuatOleh: S.me.id, DibuatPada: now(), DikonfirmasiOleh: '', DikonfirmasiPada: null, _tmp: tag };
   const rows = [];
   (p.items || []).forEach(it => {
-    if (it.bundleSku) (IX.bItems[it.bundleSku] || []).forEach((c, k) => rows.push(Object.assign({}, base, { TxID: tmpId('TX'), Jenis: 'BUNDLE_OUT', VariantID: slug(c.SKU) + '-' + slug(c.Warna) + '-' + slug(it.ukuran), Jumlah: -c.Jumlah * it.qty, BundleSKU: it.bundleSku, Paket: k === 0 ? it.qty : 0 })));
+    if (it.bundleSku) (IX.bItems[it.bundleSku] || []).forEach((c, k) => rows.push(Object.assign({}, base, { TxID: tmpId('TX'), Jenis: 'BUNDLE_OUT', VariantID: skuKey(c.SKU) + '-' + slug(c.Warna) + '-' + slug(it.ukuran), Jumlah: -c.Jumlah * it.qty, BundleSKU: it.bundleSku, Paket: k === 0 ? it.qty : 0 })));
     else rows.push(Object.assign({}, base, { TxID: tmpId('TX'), Jenis: kind === 'out' ? 'OUT' : kind === 'po' ? 'PO_IN' : 'IN', VariantID: it.variantId, Jumlah: kind === 'out' ? -it.qty : it.qty }));
   });
   return rows;

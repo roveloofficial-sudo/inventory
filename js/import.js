@@ -312,7 +312,7 @@ function importPreviewHTML(st) {
       </div></div>`;
 }
 function impComps(r) {
-  if (r.kind === 'bundle') return (IX.bItems[r.id] || []).map(i => ({ vid: slug(i.SKU) + '-' + slug(i.Warna) + '-' + slug(r.bUkuran), q: i.Jumlah * r.qty }));
+  if (r.kind === 'bundle') return (IX.bItems[r.id] || []).map(i => ({ vid: skuKey(i.SKU) + '-' + slug(i.Warna) + '-' + slug(r.bUkuran), q: i.Jumlah * r.qty }));
   return r.id ? [{ vid: r.id, q: r.qty }] : [];
 }
 function impRowHTML(r) {

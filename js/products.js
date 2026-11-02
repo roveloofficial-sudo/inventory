@@ -127,20 +127,41 @@ function openProductForm(sku) {
   const existing = p ? S.variants.filter(v => v.SKU === sku).sort(sortVariants) : [];
   const colors = Array.from(new Set(listOf(S.settings.WarnaList).concat(existing.map(v => v.Warna))));
   const sizes = Array.from(new Set(listOf(S.settings.UkuranList).concat(existing.map(v => v.Ukuran)))).sort((a, b) => sizeRank(a) - sizeRank(b));
-  const F = { colors: [], sizes: [], photo: null, thumb: null };
+  const F = { colors: [], sizes: [], photo: null, thumb: null, noTouched: false };
+  // ── SKU otomatis: BRAND-KODEKATEGORI-NOMOR (mis. RVL-CP-001); hanya nomor yang diisi
+  const catOf = () => IX.c[$('#pCat').value] || {};
+  const kodeKat = () => slug(($('#pKatKode') || {}).value || '');
+  const prefix = () => { const b = slug($('#pBrand').value), k = kodeKat(); return b && k ? b + '-' + k + '-' : ''; };
+  const composeSku = () => { const pre = prefix(), no = (($('#pNo') || {}).value || '').trim(); return pre && no ? pre + no.padStart(3, '0') : ''; }; // 1 → 001
+  const nextNo = pre => { let max = 0; S.products.forEach(x => { if (x.SKU.indexOf(pre) === 0) { const m = x.SKU.slice(pre.length).match(/^(\d+)$/); if (m) max = Math.max(max, Number(m[1])); } }); return String(max + 1).padStart(3, '0'); };
+  const syncSku = (fromCat) => {
+    if (p) return;
+    const c = catOf(), kk = $('#pKatKode'), has = !!c.KodeKategori;
+    if (fromCat) { kk.value = has ? c.KodeKategori : suggestKodeKategori(c.NamaKategori, c.CategoryID); kk.readOnly = has; }
+    $('#pKatHelp').innerHTML = has ? 'Kode tersimpan untuk kategori ini · ubah di General Settings → Kategori' : 'Kode baru untuk <b>' + esc(c.NamaKategori || '') + '</b> — disimpan & dipakai seterusnya';
+    const pre = prefix();
+    $('#pSkuPre').textContent = pre || '—';
+    if (pre && !F.noTouched) $('#pNo').value = nextNo(pre);
+    const sku = composeSku(), dup = sku && IX.p[sku];
+    $('#pSkuHelp').innerHTML = !sku ? 'Isi kode kategori dan nomor.' : dup ? `<span class="t-danger">${I('error', 'sm')} SKU <b>${esc(sku)}</b> sudah dipakai produk lain</span>` : 'SKU: <b class="mono">' + esc(sku) + '</b> · nomor berikutnya disarankan otomatis, boleh diubah';
+    draw();
+  };
   const draw = () => {
     const combos = [];
-    F.colors.forEach(w => F.sizes.forEach(u => { const vid = slug($('#pSku').value || sku || 'SKU') + '-' + slug(w) + '-' + slug(u); if (!existing.some(v => v.VariantID === vid)) combos.push([w, u, vid]); }));
+    const curSku = p ? p.SKU : (composeSku() || 'SKU');
+    F.colors.forEach(w => F.sizes.forEach(u => { const vid = vidOf(curSku, w, u); if (!existing.some(v => v.VariantID === vid)) combos.push([w, u, vid]); }));
     $('#pCombos').innerHTML = combos.length ? `<div class="help">${combos.length} varian baru akan dibuat:</div><div class="table-wrap" style="border:1px solid var(--border);border-radius:8px;max-height:260px"><table class="tbl dense"><thead><tr><th>Varian</th><th class="num">Stok awal</th></tr></thead><tbody>${combos.map(c => `<tr><td><span class="color-chip">${dotC(c[0])}<span class="mono">${esc(c[2])}</span></span></td><td class="num"><input type="number" min="0" step="1" class="input input-sm qty" data-awal="${esc(c[0])}|${esc(c[1])}" placeholder="0" style="margin-left:auto"></td></tr>`).join('')}</tbody></table></div><span class="help">Stok awal dicatat sebagai transaksi barang masuk${can('IN_CONFIRM') ? ' (langsung dikonfirmasi)' : ' (Pending, menunggu konfirmasi)'}.</span>` : `<span class="help">${p ? 'Pilih warna & ukuran untuk menambah varian baru.' : 'Pilih minimal satu warna dan satu ukuran.'}</span>`;
     $('#pComboCount').textContent = combos.length ? combos.length + ' varian baru' : '';
   };
   const chips = (arr, kind) => arr.map(x => `<button type="button" class="pick-chip" data-pick="${kind}" data-v="${esc(x)}">${kind === 'colors' ? dotC(x) : ''}${esc(x)}</button>`).join('');
   openDrawer({
     title: p ? 'Edit produk' : 'Tambah produk & varian', sub: p ? p.SKU + ' · ' + existing.length + ' varian' : 'Definisikan spesifikasi ukuran, warna & ambang stok',
-    body: `<div class="field"><label for="pNama">Nama / jenis produk <span class="req">*</span></label><input id="pNama" class="input" value="${esc(p ? p.NamaProduk : '')}" placeholder="ROVELO Chino Pants" maxlength="80"></div>
-      <div class="form-grid"><div class="field"><label for="pBrand">Brand code <span class="req">*</span></label><input id="pBrand" class="input mono" value="${esc(p ? p.BrandCode : 'RVL')}" maxlength="10"></div>
-      <div class="field"><label for="pSku">Product code / SKU <span class="req">*</span></label><input id="pSku" class="input mono" value="${esc(p ? p.SKU : '')}" placeholder="RVL001" maxlength="20" ${p ? 'readonly' : ''}>${p ? '<span class="help">SKU tidak bisa diubah setelah dibuat.</span>' : ''}</div></div>
+    body: `<div class="field"><label for="pNama">Nama / jenis produk <span class="req">*</span></label><input id="pNama" class="input" value="${esc(p ? p.NamaProduk : '')}" placeholder="ROVELO-CP-HITAM" maxlength="80"><span class="help">Boleh huruf, angka, dan simbol (mis. - / &amp; .)</span></div>
       <div class="field"><label for="pCat">Kategori <span class="req">*</span></label><select id="pCat" class="select">${S.categories.filter(c => c.Aktif || (p && p.CategoryID === c.CategoryID)).map(c => `<option value="${esc(c.CategoryID)}" ${p && p.CategoryID === c.CategoryID ? 'selected' : ''}>${esc(c.NamaKategori)}</option>`).join('')}</select></div>
+      ${p ? `<div class="form-grid"><div class="field"><label for="pBrand">Brand code <span class="req">*</span></label><input id="pBrand" class="input mono" value="${esc(p.BrandCode)}" maxlength="10"></div>
+      <div class="field"><label for="pSku">Product code / SKU</label><input id="pSku" class="input mono" value="${esc(p.SKU)}" readonly><span class="help">SKU tidak bisa diubah setelah dibuat.</span></div></div>` : `<div class="form-grid"><div class="field"><label for="pBrand">Brand code <span class="req">*</span></label><input id="pBrand" class="input mono" value="RVL" maxlength="10" autocapitalize="characters"></div>
+      <div class="field"><label for="pKatKode">Kode kategori <span class="req">*</span></label><input id="pKatKode" class="input mono" maxlength="12" autocapitalize="characters" placeholder="CP"><span class="help" id="pKatHelp"></span></div></div>
+      <div class="field"><label for="pNo">Product code / SKU <span class="req">*</span></label><div class="sku-build"><span class="sku-pre mono" id="pSkuPre">RVL-</span><input id="pNo" class="input mono" inputmode="numeric" maxlength="6" placeholder="001" aria-label="Nomor produk"></div><span class="help" id="pSkuHelp"></span></div>`}
       ${p ? `<div class="field"><span class="flabel">Varian saat ini</span><div class="row wrap">${existing.map(v => `<span class="tag" style="padding-right:10px">${dotC(v.Warna)}${esc(v.Warna)} · ${esc(v.Ukuran)}${v.Aktif ? '' : ' (nonaktif)'}</span>`).join('')}</div></div>` : ''}
       <div class="field"><span class="flabel">${p ? 'Tambah warna' : 'Warna'} <span class="req">*</span></span><div class="pick-chips" id="pColors">${chips(colors, 'colors')}</div><div class="row"><input id="pColorNew" class="input input-sm" placeholder="Warna lain…" style="max-width:200px"><button type="button" class="btn btn-sm" data-act="pick-add" data-k="colors">${I('add')}Tambah</button></div></div>
       <div class="field"><span class="flabel">${p ? 'Tambah ukuran' : 'Ukuran'} <span class="req">*</span></span><div class="pick-chips" id="pSizes">${chips(sizes, 'sizes')}</div><div class="row"><input id="pSizeNew" class="input input-sm" placeholder="Ukuran lain…" style="max-width:200px"><button type="button" class="btn btn-sm" data-act="pick-add" data-k="sizes">${I('add')}Tambah</button></div></div>
@@ -158,7 +179,13 @@ function openProductForm(sku) {
         if (i >= 0) arr.splice(i, 1); else arr.push(v);
         c.classList.toggle('on', i < 0); draw();
       });
-      $('#pSku', d).addEventListener('input', debounce(draw, 150));
+      if (!p) {
+        $('#pCat', d).addEventListener('change', () => syncSku(true));
+        $('#pBrand', d).addEventListener('input', () => { const e = $('#pBrand', d); e.value = slug(e.value); syncSku(false); });
+        $('#pKatKode', d).addEventListener('input', () => { const e = $('#pKatKode', d); e.value = slug(e.value); syncSku(false); });
+        $('#pNo', d).addEventListener('input', () => { const e = $('#pNo', d); e.value = e.value.replace(/\D/g, ''); F.noTouched = !!e.value; syncSku(false); });
+        syncSku(true);
+      }
       const file = $('#pFile', d), drop = $('#pDrop', d);
       const takeFile = async fl => {
         if (!fl) return;
@@ -170,7 +197,7 @@ function openProductForm(sku) {
       ['dragover', 'dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
       ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
       drop.addEventListener('drop', e => takeFile(e.dataTransfer.files[0]));
-      $('#pSave', d).addEventListener('click', () => saveProduct(p, F));
+      $('#pSave', d).addEventListener('click', () => saveProduct(p, F, composeSku, catOf, kodeKat));
       draw();
     }
   });
@@ -183,23 +210,32 @@ function squareThumb(file, size) {
     img.src = URL.createObjectURL(file);
   });
 }
-async function saveProduct(p, F) {
+async function saveProduct(p, F, composeSku, catOf, kodeKat) {
   const d = $('#drawer');
   const variants = [];
   F.colors.forEach(w => F.sizes.forEach(u => {
     const inp = $(`[data-awal="${CSS.escape(w + '|' + u)}"]`, d);
     variants.push({ warna: w, ukuran: u, min: $('#pMin', d).value, stokAwal: inp ? inp.value || 0 : 0 });
   }));
-  const sku = p ? p.SKU : slug($('#pSku', d).value);
-  const payload = { mode: p ? 'update' : 'create', sku: sku, nama: $('#pNama', d).value, brand: $('#pBrand', d).value, categoryId: $('#pCat', d).value, variants: variants.filter(v => !S.variants.some(x => x.VariantID === sku + '-' + slug(v.warna) + '-' + slug(v.ukuran))) };
+  const sku = p ? p.SKU : composeSku();
+  const payload = { mode: p ? 'update' : 'create', sku: sku, nama: $('#pNama', d).value, brand: $('#pBrand', d).value, categoryId: $('#pCat', d).value, variants: variants.filter(v => !S.variants.some(x => x.VariantID === vidOf(sku, v.warna, v.ukuran))) };
   if (!payload.nama.trim()) { toast('Lengkapi data', 'Nama produk wajib diisi.', 'warning'); $('#pNama', d).focus(); return; }
-  if (!p && !/^[A-Z0-9]{2,20}$/.test(sku)) { toast('Lengkapi data', 'Product Code / SKU wajib 2–20 huruf/angka.', 'warning'); $('#pSku', d).focus(); return; }
+  if (!p) {
+    const cat = catOf(), kk = kodeKat();
+    if (!slug(payload.brand)) { toast('Lengkapi data', 'Brand code wajib diisi (mis. RVL).', 'warning'); $('#pBrand', d).focus(); return; }
+    if (!/^[A-Z0-9]{1,12}$/.test(kk)) { toast('Lengkapi data', 'Kode kategori wajib 1–12 huruf/angka (mis. CP).', 'warning'); $('#pKatKode', d).focus(); return; }
+    if (!cat.KodeKategori && S.categories.some(c => c.CategoryID !== cat.CategoryID && c.KodeKategori === kk)) { toast('Kode kategori dipakai', 'Kode ' + kk + ' sudah dipakai kategori lain. Gunakan kode lain.', 'warning'); $('#pKatKode', d).focus(); return; }
+    if (!/^\d{1,6}$/.test(($('#pNo', d).value || '').trim())) { toast('Lengkapi data', 'Isi nomor produk (angka, mis. 001).', 'warning'); $('#pNo', d).focus(); return; }
+    if (IX.p[sku]) { toast('SKU sudah dipakai', 'SKU ' + sku + ' sudah dipakai produk lain. Ganti nomornya.', 'warning'); $('#pNo', d).focus(); return; }
+    if (!cat.KodeKategori) payload.kodeKategori = kk;
+  }
   if (!p && !payload.variants.length) { toast('Lengkapi data', 'Pilih minimal satu warna dan satu ukuran.', 'warning'); return; }
   const btn = $('#pSave', d); btn.classList.add('loading');
   const r = await callApi('product.save', payload);
   btn.classList.remove('loading');
   if (!r.success) { toast('Gagal menyimpan', r.message, 'danger', 8000); return; }
   upsert(S.products, [r.data.product], 'SKU');
+  if (r.data.categories) S.categories = r.data.categories;
   upsert(S.variants, r.data.variants, 'VariantID');
   r.data.variants.forEach(v => { if (S.stock[v.VariantID] === undefined) S.stock[v.VariantID] = 0; });
   if (r.data.patch) applyPatch(r.data.patch);

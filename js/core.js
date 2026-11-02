@@ -100,6 +100,24 @@ const tmpId = p => (p || 'TMP') + '-' + Date.now().toString(36) + (++_seq);
 const clone = o => JSON.parse(JSON.stringify(o));
 const initials = n => String(n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0]).join('').toUpperCase();
 const slug = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+/** SKU produk: huruf besar, angka, tanda strip (mis. RVL-CP-001). Dipakai juga untuk menyusun kode varian. */
+const skuKey = s => String(s || '').toUpperCase().replace(/[^A-Z0-9-]+/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
+const vidOf = (sku, warna, ukuran) => skuKey(sku) + '-' + slug(warna) + '-' + slug(ukuran);
+/** Saran kode kategori: inisial (Celana Pendek → CP); bila bentrok → konsonan kata pertama + kata berikutnya (CLPANJANG). */
+function suggestKodeKategori(nama, exceptId) {
+  const used = new Set(S.categories.filter(c => c.CategoryID !== exceptId && c.KodeKategori).map(c => String(c.KodeKategori)));
+  const words = String(nama || '').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+  if (!words.length) return '';
+  const cands = [];
+  if (words.length > 1) cands.push(words.map(w => w[0]).join(''));
+  else cands.push(words[0].slice(0, 6));
+  const cons = words[0][0] + words[0].slice(1).replace(/[AEIOU]/g, '');
+  cands.push((cons.slice(0, 2) + words.slice(1).join('')).slice(0, 12));
+  cands.push(words.join('').slice(0, 12));
+  for (const c of cands) if (c && !used.has(c)) return c;
+  for (let i = 2; i < 100; i++) { const c = (cands[0].slice(0, 10) + i); if (!used.has(c)) return c; }
+  return '';
+}
 const listOf = s => String(s || '').split(',').map(x => x.trim()).filter(Boolean);
 const sum = (arr, f) => arr.reduce((a, x) => a + (f ? f(x) : x), 0);
 const int = v => { const n = Number(v); return Number.isInteger(n) ? n : NaN; };
@@ -203,13 +221,13 @@ const markets = () => listOf(S.settings.MarketplaceList || 'Shopee,TikTok Shop,L
 function bundleCap(bsku, ukuran) {
   const items = IX.bItems[bsku] || [];
   if (!items.length) return 0;
-  return Math.min.apply(null, items.map(i => { const vid = slug(i.SKU) + '-' + slug(i.Warna) + '-' + slug(ukuran); return IX.v[vid] ? Math.floor(stockOf(vid) / i.Jumlah) : 0; }));
+  return Math.min.apply(null, items.map(i => { const vid = skuKey(i.SKU) + '-' + slug(i.Warna) + '-' + slug(ukuran); return IX.v[vid] ? Math.floor(stockOf(vid) / i.Jumlah) : 0; }));
 }
 function bundleSizes(bsku) {
   const items = IX.bItems[bsku] || [];
   if (!items.length) return [];
   const sizes = S.variants.filter(v => v.SKU === items[0].SKU).map(v => v.Ukuran);
-  return Array.from(new Set(sizes)).filter(u => items.every(i => IX.v[slug(i.SKU) + '-' + slug(i.Warna) + '-' + slug(u)]));
+  return Array.from(new Set(sizes)).filter(u => items.every(i => IX.v[skuKey(i.SKU) + '-' + slug(i.Warna) + '-' + slug(u)]));
 }
 /** Kelompok transaksi (GroupID) — dihitung sekali per perubahan data. */
 function groups() {
