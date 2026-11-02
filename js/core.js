@@ -30,7 +30,7 @@ const PERM_LABEL = {
 };
 const ROLE_PERMS = {
   Owner: PERMS.slice(),
-  Manager: PERMS.filter(p => p !== 'MEMBER_MANAGE'),
+  Manager: PERMS.filter(p => p !== 'MEMBER_MANAGE' && p !== 'PRODUCT_DELETE'),
   Admin: ['VIEW', 'IN_CREATE', 'IN_CONFIRM', 'OUT_CREATE', 'OUT_CONFIRM', 'IMPORT', 'PO_MANAGE', 'RTS_PROCESS', 'EXPORT'],
   Staff: ['VIEW', 'IN_CREATE', 'OUT_CREATE', 'IMPORT', 'PO_MANAGE']
 };
