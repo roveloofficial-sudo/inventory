@@ -47,10 +47,11 @@ function variantsView(f) {
       <span class="grow"></span><span class="muted tnum">${fmt(list.length)} varian · ${fmt(totalStock)} pcs</span>
     </div>
     <div class="table-wrap"><table class="tbl">
-      <thead><tr><th>Foto</th><th>Kode / SKU</th><th>Nama produk</th><th>Warna</th><th>Ukuran</th><th class="num">Stok</th><th class="num">Min</th><th>Status</th><th></th></tr></thead>
-      <tbody>${pg.rows.length ? pg.rows.map(v => {
+      <thead><tr><th class="num w1">No</th><th>Foto</th><th>Kode / SKU</th><th>Nama produk</th><th>Warna</th><th>Ukuran</th><th class="num">Stok</th><th class="num">Min</th><th>Status</th><th></th></tr></thead>
+      <tbody>${pg.rows.length ? pg.rows.map((v, i) => {
         const p = IX.p[v.SKU], s = stockOf(v.VariantID), stat = (!v.Aktif || (p && !p.Aktif)) ? 'inactive' : vStatus(v);
         return `<tr class="clickable" data-act="variant-open" data-id="${esc(v.VariantID)}">
+          <td class="num muted tnum w1">${fmt(pg.from + i)}</td>
           <td class="w1">${thumb(v.VariantID)}</td>
           <td class="nowrap"><span class="mono strong">${esc(v.VariantID)}</span></td>
           <td><div class="col"><b>${esc(p ? p.NamaProduk : v.SKU)}</b><span class="muted" style="font-size:12.5px">${esc(p && IX.c[p.CategoryID] ? IX.c[p.CategoryID].NamaKategori : '—')}</span></div></td>
@@ -60,7 +61,7 @@ function variantsView(f) {
           <td class="num muted">${fmt(v.BatasMinimum)}</td>
           <td>${stPill(stat)}</td>
           <td class="act">${I('chevron_right', 'faint')}</td></tr>`;
-      }).join('') : `<tr><td colspan="9">${emptyHTML('inventory_2', 'Tidak ada varian', 'Ubah filter atau tambahkan produk baru.')}</td></tr>`}</tbody></table></div>
+      }).join('') : `<tr><td colspan="10">${emptyHTML('inventory_2', 'Tidak ada varian', 'Ubah filter atau tambahkan produk baru.')}</td></tr>`}</tbody></table></div>
     ${pagerHTML(pg, 'products', 'varian')}</div>`;
 }
 
@@ -119,6 +120,16 @@ function openVariant(vid) {
       ${can('IN_CREATE') ? `<button class="btn" data-act="in-new" data-vid="${esc(vid)}">${I('add')}Barang masuk</button>` : ''}
       ${editable ? `<button class="btn btn-primary" data-act="product-edit" data-sku="${esc(v.SKU)}">${I('edit')}Edit produk</button>` : ''}`
   });
+}
+
+/** Konfirmasi hapus permanen (Owner): harus mengetik kode persis. */
+function confirmPermanent(apa, kode) {
+  return modal({ icon: 'delete_forever', tone: 'danger', title: 'Hapus permanen ' + apa + ' ' + kode + '?',
+    text: 'Seluruh riwayatnya ikut terhapus dan tidak muncul lagi di laporan: transaksi stok masuk/keluar, item PO, RTS, dan stock opname.',
+    body: `<div class="banner banner-info">${I('backup')}<p>Backup database dibuat otomatis sebelum menghapus, sehingga masih bisa dipulihkan dari General Settings → Backup &amp; keamanan.</p></div>
+      <div class="field mt-12"><label for="delConfirm">Ketik <b class="mono">${esc(kode)}</b> untuk melanjutkan</label><input id="delConfirm" class="input mono" autocomplete="off" spellcheck="false"></div>`,
+    ok: 'Hapus permanen', danger: true,
+    onOk: b => { if ($('#delConfirm', b).value.trim().toUpperCase() !== String(kode).toUpperCase()) { toast('Kode tidak cocok', 'Ketik ' + kode + ' persis untuk menghapus.', 'warning'); return false; } } });
 }
 
 // ── Form produk (baru / edit) ──
@@ -341,12 +352,17 @@ Object.assign(ACT, {
   },
   'variant-delete': async el => {
     const vid = el.dataset.id;
-    const ok = await modal({ icon: 'delete', tone: 'danger', title: 'Hapus varian ' + vid + '?', text: 'Varian yang sudah punya transaksi tidak bisa dihapus — nonaktifkan saja.', ok: 'Hapus', danger: true });
+    const ok = await modal({ icon: 'delete', tone: 'danger', title: 'Hapus varian ' + vid + '?', text: isOwner() ? 'Bila varian sudah punya riwayat, Anda akan diminta konfirmasi hapus permanen.' : 'Varian yang sudah punya transaksi tidak bisa dihapus — nonaktifkan saja.', ok: 'Hapus', danger: true });
     if (!ok) return;
-    const r = await callApi('variant.delete', { variantId: vid });
-    if (!r.success) { toast('Tidak bisa dihapus', r.message, 'danger', 7000); return; }
+    let r = await callApi('variant.delete', { variantId: vid });
+    if (!r.success && r.code === 'HAS_HISTORY' && r.data && r.data.bisaPaksa) {
+      if (!(await confirmPermanent('varian', vid))) return;
+      r = await callApi('variant.delete', { variantId: vid, paksa: true });
+    }
+    if (!r.success) { toast('Tidak bisa dihapus', r.message, 'danger', 8000); return; }
     S.variants = S.variants.filter(v => v.VariantID !== vid); delete S.stock[vid];
-    reindex(); closeDrawer(); afterChange(); toast('Varian dihapus', r.message, 'success');
+    reindex(); closeDrawer(); afterChange(); toast('Varian dihapus', r.message, 'success', r.data && r.data.permanen ? 8000 : 4000);
+    if (r.data && r.data.permanen) refresh(true, true);
   },
   'product-toggle': async el => {
     const sku = el.dataset.sku, p = IX.p[sku], on = !p.Aktif;
@@ -355,12 +371,18 @@ Object.assign(ACT, {
   },
   'product-delete': async el => {
     const sku = el.dataset.sku;
-    const ok = await modal({ icon: 'delete', tone: 'danger', title: 'Hapus produk ' + sku + '?', text: 'Semua varian produk ini ikut terhapus. Produk yang sudah punya riwayat transaksi tidak bisa dihapus.', ok: 'Hapus produk', danger: true });
+    const ok = await modal({ icon: 'delete', tone: 'danger', title: 'Hapus produk ' + sku + '?', text: 'Semua varian produk ini ikut terhapus. ' + (isOwner() ? 'Bila produk sudah punya riwayat, Anda akan diminta konfirmasi hapus permanen.' : 'Produk yang sudah punya riwayat transaksi tidak bisa dihapus.'), ok: 'Hapus produk', danger: true });
     if (!ok) return;
-    const r = await callApi('product.delete', { sku: sku });
-    if (!r.success) { toast('Tidak bisa dihapus', r.message, 'danger', 7000); return; }
-    S.products = S.products.filter(p => p.SKU !== sku); S.variants = S.variants.filter(v => v.SKU !== sku);
-    reindex(); closeDrawer(); afterChange(); toast('Produk dihapus', r.message, 'success');
+    let r = await callApi('product.delete', { sku: sku });
+    if (!r.success && r.code === 'HAS_HISTORY' && r.data && r.data.bisaPaksa) {
+      if (!(await confirmPermanent('produk', sku))) return;
+      r = await callApi('product.delete', { sku: sku, paksa: true });
+    }
+    if (!r.success) { toast('Tidak bisa dihapus', r.message, 'danger', 8000); return; }
+    const gone = S.variants.filter(v => v.SKU === sku).map(v => v.VariantID);
+    S.products = S.products.filter(p => p.SKU !== sku); S.variants = S.variants.filter(v => v.SKU !== sku); gone.forEach(v => { delete S.stock[v]; });
+    reindex(); closeDrawer(); afterChange(); toast('Produk dihapus', r.message, 'success', r.data && r.data.permanen ? 8000 : 4000);
+    if (r.data && r.data.permanen) refresh(true, true);
   },
   'bundle-new': () => openBundleForm(null),
   'bundle-edit': el => openBundleForm(el.dataset.id),
