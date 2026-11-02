@@ -197,7 +197,7 @@ function reindex() {
 function txChanged() { IX.groups = null; IX.txById = {}; S.tx.forEach(t => { IX.txById[t.TxID] = t; }); }
 function txFromCompact(c) { S.txCols = c.cols; return c.rows.map(r => { const o = {}; c.cols.forEach((k, i) => { o[k] = r[i]; }); return o; }); }
 function applyBoot(d) {
-  ['me', 'settings', 'categories', 'products', 'variants', 'bundles', 'bundleItems', 'userNames', 'stock', 'po', 'poItems', 'rts', 'opname', 'imports', 'notifications', 'dashboard', 'hasAiKey', 'aiKeyMasked']
+  ['me', 'settings', 'categories', 'products', 'variants', 'bundles', 'bundleItems', 'userNames', 'stock', 'po', 'poItems', 'rts', 'opname', 'imports', 'notifications', 'dashboard', 'hasAiKey', 'aiKeyMasked', 'userFotos']
     .forEach(k => { if (d[k] !== undefined) S[k] = d[k]; });
   S.stockTotals = d.stockTotals || S.stockTotals || {};
   S.users = d.users || null;
@@ -412,7 +412,7 @@ const cacheStateSoon = debounce(() => {
   try {
     const d = {
       me: S.me, settings: S.settings, categories: S.categories, products: S.products, variants: S.variants, bundles: S.bundles, bundleItems: S.bundleItems,
-      userNames: S.userNames, users: S.users, stock: S.stock, stockTotals: S.stockTotals, tx: { cols: S.txCols, rows: S.tx.filter(t => !t._tmp).map(t => S.txCols.map(k => t[k])) },
+      userNames: S.userNames, userFotos: S.userFotos, users: S.users, stock: S.stock, stockTotals: S.stockTotals, tx: { cols: S.txCols, rows: S.tx.filter(t => !t._tmp).map(t => S.txCols.map(k => t[k])) },
       po: S.po, poItems: S.poItems, rts: S.rts, opname: S.opname, imports: S.imports, notifications: S.notifications, dashboard: S.dashboard, hasAiKey: S.hasAiKey, aiKeyMasked: S.aiKeyMasked
     };
     cacheState(d);
@@ -718,10 +718,13 @@ function renderLogos() {
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
   const b = $('#bootLogo'); if (b) { b.src = logoSrc(dark); b.style.filter = custom && dark ? 'brightness(0) invert(1)' : ''; }
 }
+/** Avatar: foto profil bila ada, selain itu inisial nama. */
+function userFoto(uid) { return (S.me && S.me.id === uid && S.me.foto) || (S.userFotos || {})[uid] || ''; }
+function avatarInner(nama, foto) { return foto ? `<img src="${esc(foto)}" alt="">` : esc(initials(nama)); }
 function renderShell() {
   if (!S.me) return;
   renderLogos();
-  $('#sideAvatar').textContent = initials(S.me.nama);
+  $('#sideAvatar').innerHTML = avatarInner(S.me.nama, S.me.foto);
   $('#sideName').textContent = S.me.nama;
   $('#sideRole').textContent = S.me.role + ' · @' + S.me.username;
   const h = wib(now()).getUTCHours();
@@ -781,7 +784,7 @@ function markNotifRead(items) {
 }
 function openUserMenu(btn) {
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-  openPop(btn, `<div class="pop-head"><div class="row gap-12"><span class="avatar">${esc(initials(S.me.nama))}</span><div class="col"><b>${esc(S.me.nama)}</b><span class="muted" style="font-size:12.5px">${esc(S.me.role)} · @${esc(S.me.username)}</span></div></div></div>
+  openPop(btn, `<div class="pop-head"><div class="row gap-12"><span class="avatar">${avatarInner(S.me.nama, S.me.foto)}</span><div class="col"><b>${esc(S.me.nama)}</b><span class="muted" style="font-size:12.5px">${esc(S.me.role)} · @${esc(S.me.username)}</span></div></div></div>
     <button class="menu-item" data-act="change-pass">${I('key')}Ubah kata sandi</button>
     <button class="menu-item" data-act="theme">${I(dark ? 'light_mode' : 'dark_mode')}${dark ? 'Mode terang' : 'Mode gelap'}</button>
     <button class="menu-item" data-act="logout-all">${I('devices')}Keluar dari perangkat lain</button>

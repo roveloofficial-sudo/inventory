@@ -130,7 +130,7 @@ function groupTable(list, key, kind) {
         <td>${srcLabel(g)}</td>
         <td>${g.jenis === 'BUNDLE_OUT' && first.BundleSKU ? `<div class="prod"><span class="thumb">${I('redeem')}</span><div class="col"><b class="ellipsis">${esc(IX.b[first.BundleSKU] ? IX.b[first.BundleSKU].NamaBundle : first.BundleSKU)}</b><span>${esc(vSub(first.VariantID).split(' · ')[1] || '')} · ${g.rows.length} komponen</span></div></div>` : prodCell(first.VariantID, others > 0 ? '+' + others + ' varian' : '')}</td>
         <td class="num ${g.qty >= 0 ? 'qty-pos' : 'qty-neg'}">${sgn(g.qty)} pcs</td>
-        <td><div class="row"><span class="avatar" style="width:28px;height:28px;font-size:11px">${esc(initials(userName(g.dibuatOleh)))}</span><span class="nowrap">${esc(userName(g.dibuatOleh))}</span></div></td>
+        <td><div class="row"><span class="avatar" style="width:28px;height:28px;font-size:11px">${avatarInner(userName(g.dibuatOleh), userFoto(g.dibuatOleh))}</span><span class="nowrap">${esc(userName(g.dibuatOleh))}</span></div></td>
         <td>${txPill(g.status, g.optimistic)}</td>
         <td class="act">${canConf ? `<button class="btn btn-xs btn-primary" data-act="group-confirm" data-id="${esc(g.id)}">${I('check')}Konfirmasi</button>` : I('chevron_right', 'faint')}</td></tr>`;
     }).join('') : `<tr><td colspan="8">${emptyHTML('inbox', 'Tidak ada transaksi', 'Ubah filter periode atau status.')}</td></tr>`}</tbody></table></div>${pagerHTML(pg, key, 'batch transaksi')}`;

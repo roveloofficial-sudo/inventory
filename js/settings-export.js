@@ -110,7 +110,7 @@ function setMembers() {
         const rp = ROLE_PERMS[u.PeranDasar] || [];
         const plus = listOf(u.IzinTambahan).filter(p => rp.indexOf(p) < 0), minus = listOf(u.IzinDicabut).filter(p => rp.indexOf(p) >= 0);
         const locked = u.TerkunciSampai && u.TerkunciSampai > now();
-        return `<tr><td><div class="row gap-12"><span class="avatar" style="${u.PeranDasar === 'Owner' ? 'background:var(--ink);color:var(--on-ink)' : ''}">${esc(initials(u.Nama))}</span><div class="col"><b>${esc(u.Nama)}</b><span class="muted" style="font-size:12.5px">@${esc(u.Username)}${u.Email ? ' · ' + esc(u.Email) : ''}</span></div></div></td>
+        return `<tr><td><div class="row gap-12"><span class="avatar" style="${u.PeranDasar === 'Owner' && !u.Foto ? 'background:var(--ink);color:var(--on-ink)' : ''}">${avatarInner(u.Nama, u.Foto)}</span><div class="col"><b>${esc(u.Nama)}</b><span class="muted" style="font-size:12.5px">@${esc(u.Username)}${u.Email ? ' · ' + esc(u.Email) : ''}</span></div></div></td>
           <td>${roleP(u.PeranDasar)}</td>
           <td><div class="row wrap gap-4">${u.PeranDasar === 'Owner' ? '<span class="tag" style="padding-right:10px">Akses master (penuh)</span>' : (plus.map(p => `<span class="pill pill-info" title="${esc(PERM_LABEL[p])}">+ ${esc(p)}</span>`).join('') + minus.map(p => `<span class="pill pill-outline" title="${esc(PERM_LABEL[p])}">− ${esc(p)}</span>`).join('')) || '<span class="muted">Sesuai peran</span>'}</div></td>
           <td>${!u.Aktif ? '<span class="pill pill-outline">' + I('block') + 'Nonaktif</span>' : locked ? `<span class="pill pill-danger">${I('lock')}Terkunci s/d ${fmtTime(u.TerkunciSampai)}</span>` : '<span class="pill pill-success"><span class="pd"></span>Aktif</span>'}<div class="muted" style="font-size:12px;margin-top:4px">${u.TerakhirLogin ? 'Login ' + relTime(u.TerakhirLogin) : 'Belum pernah login'}</div></td>
@@ -120,7 +120,7 @@ function setMembers() {
 }
 function openMemberForm(uid) {
   const u = uid ? (S.users || []).find(x => x.UserID === uid) : null;
-  const st = { role: u ? u.PeranDasar : 'Staff', perms: u ? memberPerms(u) : Object.fromEntries(ROLE_PERMS.Staff.map(p => [p, 1])) };
+  const st = { role: u ? u.PeranDasar : 'Staff', perms: u ? memberPerms(u) : Object.fromEntries(ROLE_PERMS.Staff.map(p => [p, 1])), foto: undefined, fotoNow: u ? u.Foto || '' : '' };
   const drawPerms = () => {
     const def = {}; ROLE_PERMS[st.role].forEach(p => { def[p] = 1; });
     $('#mbPerms').innerHTML = PERMS.map(p => { const on = !!st.perms[p], changed = on !== !!def[p]; const lock = p === 'VIEW' || (p === 'MEMBER_MANAGE' && !isOwner()) || st.role === 'Owner'; return `<label class="${changed ? 'changed' : ''}"><input type="checkbox" data-perm="${p}" ${on ? 'checked' : ''} ${lock ? 'disabled' : ''}>${esc(PERM_LABEL[p])}<span class="pc">${changed ? (on ? '+ ' : '− ') : ''}${p}</span></label>`; }).join('');
@@ -128,7 +128,9 @@ function openMemberForm(uid) {
   openDrawer({
     title: u ? u.Nama : 'Tambah member baru', sub: u ? '@' + u.Username + ' · ' + u.UserID : 'Pilih peran dasar, lalu sesuaikan izin bila perlu',
     badge: u ? (u.Aktif ? '<span class="pill pill-success">Aktif</span>' : '<span class="pill pill-outline">Nonaktif</span>') : '',
-    body: `<div class="form-grid"><div class="field"><label for="mbNama">Nama lengkap <span class="req">*</span></label><input id="mbNama" class="input" value="${esc(u ? u.Nama : '')}"></div>
+    body: `<div class="field"><span class="flabel">Foto profil (opsional)</span><div class="row gap-12 mb-photo"><span class="avatar avatar-lg" id="mbAvatar">${avatarInner(u ? u.Nama : '?', st.fotoNow)}</span>
+        <div class="col gap-4"><div class="row wrap"><label class="btn btn-sm">${I('add_a_photo')}Pilih foto<input type="file" id="mbFoto" accept="image/png,image/jpeg,image/webp" hidden></label><button type="button" class="btn btn-sm btn-ghost" id="mbFotoDel" ${st.fotoNow ? '' : 'hidden'}>${I('delete')}Hapus foto</button></div><span class="help">JPG/PNG/WEBP · otomatis dipotong persegi & diperkecil</span></div></div></div>
+      <div class="form-grid"><div class="field"><label for="mbNama">Nama lengkap <span class="req">*</span></label><input id="mbNama" class="input" value="${esc(u ? u.Nama : '')}"></div>
       <div class="field"><label for="mbUser">Username <span class="req">*</span></label><input id="mbUser" class="input mono" value="${esc(u ? u.Username : '')}" autocapitalize="none" spellcheck="false" placeholder="huruf kecil, angka, . _ -"></div>
       <div class="field span-2"><label for="mbEmail">Email Google (opsional)</label><input id="mbEmail" type="email" class="input" value="${esc(u ? u.Email : '')}" placeholder="Untuk akses lihat & unduh folder ROVELO di Drive"></div>
       ${u ? '' : `<div class="field span-2"><label for="mbPass">Sandi awal <span class="req">*</span></label><div class="row"><input id="mbPass" class="input mono" autocomplete="new-password"><button type="button" class="btn" data-act="gen-pass">${I('casino')}Buat</button></div><span class="help">Minimal 8 karakter, huruf + angka. Berikan ke member dan minta segera diganti.</span></div>`}</div>
@@ -137,6 +139,15 @@ function openMemberForm(uid) {
     foot: `${u ? `<button class="btn" data-act="member-reset" data-id="${esc(u.UserID)}">${I('lock_reset')}Reset sandi</button><button class="btn ${u.Aktif ? 'btn-danger' : ''}" data-act="member-active" data-id="${esc(u.UserID)}">${u.Aktif ? I('person_off') + 'Nonaktifkan' : I('person') + 'Aktifkan'}</button>` : ''}<span class="grow"></span><button class="btn" data-act="drawer-close">Batal</button><button class="btn btn-primary" id="mbSave">${u ? 'Simpan' : 'Tambah member'}</button>`,
     onMount: d => {
       drawPerms();
+      const showFoto = () => { const f = st.foto !== undefined ? st.foto : st.fotoNow; $('#mbAvatar', d).innerHTML = avatarInner($('#mbNama', d).value || (u ? u.Nama : '?'), f); $('#mbFotoDel', d).hidden = !f; };
+      $('#mbFoto', d).addEventListener('change', async e => {
+        const fl = e.target.files[0]; e.target.value = ''; if (!fl) return;
+        if (!/^image\/(png|jpeg|webp)$/.test(fl.type)) { toast('Format tidak didukung', 'Pilih file JPG, PNG, atau WEBP.', 'warning'); return; }
+        if (fl.size > 10 * 1024 * 1024) { toast('File terlalu besar', 'Maksimal 10 MB.', 'warning'); return; }
+        try { st.foto = await squareThumb(fl, 160); showFoto(); } catch (err) { toast('Foto tidak valid', err.message, 'danger'); }
+      });
+      $('#mbFotoDel', d).addEventListener('click', () => { st.foto = ''; showFoto(); });
+      $('#mbNama', d).addEventListener('input', () => { if (!(st.foto !== undefined ? st.foto : st.fotoNow)) showFoto(); });
       d.addEventListener('change', e => {
         if (e.target.name === 'mbRole') { st.role = e.target.value; st.perms = Object.fromEntries(ROLE_PERMS[st.role].map(p => [p, 1])); $$('.radio-card', d).forEach(c => c.classList.toggle('on', $('input', c).checked)); drawPerms(); }
         if (e.target.dataset.perm) { if (e.target.checked) st.perms[e.target.dataset.perm] = 1; else delete st.perms[e.target.dataset.perm]; drawPerms(); }
@@ -144,11 +155,15 @@ function openMemberForm(uid) {
       $('#mbSave', d).onclick = async () => {
         const def = ROLE_PERMS[st.role];
         const payload = { userId: u ? u.UserID : '', nama: $('#mbNama', d).value.trim(), username: $('#mbUser', d).value.trim().toLowerCase(), email: $('#mbEmail', d).value.trim(), peran: st.role, password: u ? undefined : $('#mbPass', d).value, izinTambahan: st.role === 'Owner' ? [] : PERMS.filter(p => st.perms[p] && def.indexOf(p) < 0), izinDicabut: st.role === 'Owner' ? [] : def.filter(p => p !== 'VIEW' && !st.perms[p]) };
+        if (st.foto !== undefined) payload.foto = st.foto;
         const btn = $('#mbSave', d); btn.classList.add('loading');
         const r = await callApi('member.save', payload);
         btn.classList.remove('loading');
         if (!r.success) { toast('Gagal menyimpan member', r.message, 'danger', 8000); return; }
-        S.users = r.data.users; S.users.forEach(x => { S.userNames[x.UserID] = x.Nama; });
+        S.users = r.data.users; S.userFotos = {};
+        S.users.forEach(x => { S.userNames[x.UserID] = x.Nama; if (x.Foto) S.userFotos[x.UserID] = x.Foto; });
+        const meRow = S.users.find(x => x.UserID === S.me.id); if (meRow) { S.me.foto = meRow.Foto || ''; S.me.nama = meRow.Nama; }
+        renderShell(); cacheStateSoon();
         closeDrawer(); rerender(); toast(u ? 'Member diperbarui' : 'Member ditambahkan', r.message + (u ? ' Sesi member diakhiri agar izin baru langsung berlaku.' : ''), 'success', 6000);
       };
     }
